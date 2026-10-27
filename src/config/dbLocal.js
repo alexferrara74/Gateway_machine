@@ -1,15 +1,14 @@
 import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-dotenv.config();
+import { config } from './config.js';
 
 const dbLocal = mysql.createPool({
-    host: process.env.DB_NUOVO_HOST || 'localhost',
-    user: process.env.DB_NUOVO_USER || 'root',
-    password: process.env.DB_NUOVO_PASSWORD || 'root',
-    database: process.env.DB_NUOVO_NAME || 'service',
-    port: process.env.DB_NUOVO_PORT || 3306,
+    host: config.dbLocal.host,
+    user: config.dbLocal.user,
+    password: config.dbLocal.password,
+    database: config.dbLocal.database,
+    port: config.dbLocal.port,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: config.dbLocal.connectionLimit,
     queueLimit: 0
 });
 

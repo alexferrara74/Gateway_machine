@@ -1,35 +1,46 @@
-const express = require('express');
-const router = express.Router();
-const { eseguiSincronizzazione } = require('../services/rentalService');
-const { storicizzaPayloadCompleto } = require('../services/syncPersistenceService'); // 👈 Importa il servizio di storicizzazione
+import { Router } from 'express';
+import { config } from '../config/config.js';
+import { sincronizzaEPersisti } from '../services/syncAndPersist.js';
+import { isSyncAuthorized } from '../utils/syncAuth.js';
+
+const router = Router();
 
 router.post('/riarmo-sync', async (req, res) => {
+    if (!isSyncAuthorized(req.get('authorization'), config.syncTriggerToken)) {
+        return res.status(401).json({
+            status: 'error',
+            message: 'Token di sincronizzazione non valido.'
+        });
+    }
+
+    const mesi = req.body?.mesi ?? config.mesiStorico;
+    if (!Number.isInteger(mesi) || mesi < 1 || mesi > 120) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Il campo mesi deve essere un intero tra 1 e 120.'
+        });
+    }
+
     try {
-        const mesi = req.body.mesi || parseInt(process.env.MESI_STORICO) || 2;
-        console.log(`[API] Riarmo manuale attivato via HTTP. Finestra: ${mesi} mesi.`);
-        
-        // 1. Esegue la sincronizzazione e recupera i dati
-        const result = await eseguiSincronizzazione(mesi);
-
-        // 2. STOCIZZAZIONE: Se l'estrazione è andata a buon fine, salva tutto nel nuovo DB
-        if (result && result.payload) {
-            await storicizzaPayloadCompleto(result.payload);
-            console.log('[API] 📦 Dati storicizzati con successo nel nuovo database.');
-        }
-
+        const result = await sincronizzaEPersisti(mesi);
         return res.status(200).json({
             status: 'success',
-            message: 'Sincronizzazione e storicizzazione completate con successo.',
+            message: 'Sincronizzazione completata.',
             details: result
         });
     } catch (error) {
-        console.error('[API] ❌ Errore durante il riarmo:', error.message);
+        console.error('[API] Errore durante la sincronizzazione:', error.message);
+        if (error.code === 'SYNC_IN_PROGRESS') {
+            return res.status(409).json({
+                status: 'error',
+                message: 'È già in corso una sincronizzazione.'
+            });
+        }
         return res.status(500).json({
             status: 'error',
-            message: 'Errore durante il riarmo manuale.',
-            error: error.message
+            message: 'Errore durante la sincronizzazione.'
         });
     }
 });
 
-module.exports = router;
+export default router;

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f8f5">
+    <title>Noleggi e manutenzioni | Sana Breakfast</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Sana Breakfast, pagina iniziale">
+          <span class="brand-mark">s</span>
+          <span class="brand-name">sana<span>breakfast</span></span>
+        </a>
+
+        <div class="workspace-label">GESTIONE SERVIZI</div>
+        <nav class="side-nav" aria-label="Navigazione principale">
+          <a class="side-link" href="#dashboard"><span class="nav-icon">⌂</span> Panoramica</a>
+          <a class="side-link active" href="#noleggi"><span class="nav-icon">▤</span> Noleggi</a>
+          <a class="side-link" href="#manutenzioni"><span class="nav-icon">⚙</span> Manutenzioni <span class="nav-count" id="sidebar-due-count">2</span></a>
+          <a class="side-link" href="#clienti"><span class="nav-icon">♙</span> Clienti</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="help-card">
+            <span class="help-icon">i</span>
+            <strong>Area dimostrativa</strong>
+            <p>I dati mostrati sono di esempio e vengono salvati solo in questo browser.</p>
+          </div>
+          <div class="user-profile">
+            <span class="avatar avatar-dark">SB</span>
+            <span><strong>Sana Breakfast</strong><small>Amministratore</small></span>
+            <span class="user-menu">···</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs"><span>Servizi</span><span class="crumb-divider">/</span><strong>Noleggi</strong></div>
+          <div class="topbar-actions">
+            <span class="sync-state"><span class="sync-dot"></span> Dati aggiornati</span>
+            <button class="icon-button" aria-label="Notifiche">♧<span class="notification-dot"></span></button>
+            <span class="avatar avatar-green">AF</span>
+          </div>
+        </header>
+
+        <section class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">GESTIONE ATTREZZATURE</div>
+              <h1>Noleggi</h1>
+              <p class="page-subtitle">Tieni sotto controllo i noleggi, i consumi e le manutenzioni dei clienti.</p>
+            </div>
+            <button class="button button-primary" id="open-customer-settings"><span class="button-plus">＋</span> Configura cliente</button>
+          </div>
+
+          <section class="stats-grid" aria-label="Riepilogo noleggi">
+            <article class="stat-card">
+              <div class="stat-label">Noleggi attivi <span class="stat-symbol green-symbol">▤</span></div>
+              <div class="stat-value">24</div>
+              <div class="stat-caption"><span class="caption-positive">+3</span> rispetto al mese scorso</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-label">Clienti con attrezzatura <span class="stat-symbol blue-symbol">♙</span></div>
+              <div class="stat-value">21</div>
+              <div class="stat-caption">Macchine attualmente in uso</div>
+            </article>
+            <article class="stat-card stat-card-alert">
+              <div class="stat-label">Manutenzioni da pianificare <span class="stat-symbol orange-symbol">⚙</span></div>
+              <div class="stat-value" id="stat-due-count">2</div>
+              <div class="stat-caption">In base ai consumi registrati</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-label">Straordinarie prossime <span class="stat-symbol purple-symbol">✳</span></div>
+              <div class="stat-value" id="stat-extra-count">1</div>
+              <div class="stat-caption">Cicli ordinari quasi completati</div>
+            </article>
+          </section>
+
+          <section class="workspace-card">
+            <div class="workspace-header">
+              <div>
+                <h2>Storico noleggi</h2>
+                <p>Consulta i clienti, le attrezzature e i consumi associati.</p>
+              </div>
+              <label class="search-box">
+                <span aria-hidden="true">⌕</span>
+                <input id="search-input" type="search" placeholder="Cerca cliente o attrezzatura" aria-label="Cerca cliente o attrezzatura">
+                <kbd>⌘ K</kbd>
+              </label>
+            </div>
+
+            <div class="tabs" role="tablist" aria-label="Sezione noleggi">
+              <button class="tab active" id="tab-history" role="tab" aria-selected="true">Tutti i noleggi <span class="tab-count">24</span></button>
+              <button class="tab" id="tab-maintenance" role="tab" aria-selected="false">Manutenzioni <span class="tab-count tab-count-alert" id="tab-due-count">2</span></button>
+            </div>
+
+            <div class="content-layout">
+              <div class="rental-list">
+                <div class="table-head">
+                  <span>CLIENTE / ATTREZZATURA</span>
+                  <span>ULTIMO ACQUISTO</span>
+                  <span>STATO MANUTENZIONE</span>
+                </div>
+                <div id="rental-rows" class="rental-rows"></div>
+                <div class="list-footer"><span id="results-count">3 noleggi recenti</span><button class="text-button">Mostra tutti <span>→</span></button></div>
+              </div>
+
+              <aside class="detail-panel" id="detail-panel" aria-live="polite"></aside>
+            </div>
+          </section>
+
+          <footer class="page-footer"><span>© 2026 Sana Breakfast</span><span>Storico dimostrativo · I dati non sono sincronizzati con il gestionale</span></footer>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
+      <form id="settings-form" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <div class="eyebrow">SOGLIE DI MANUTENZIONE</div>
+            <h2 id="settings-title">Configurazione cliente</h2>
+          </div>
+          <button type="button" class="icon-button dialog-close" id="close-settings" aria-label="Chiudi">×</button>
+        </div>
+        <p class="dialog-copy">Imposta i consumi che fanno scattare la manutenzione ordinaria. La soglia riparte dall’ultimo intervento ordinario.</p>
+
+        <label class="field-label" for="customer-select">Cliente</label>
+        <select class="form-control" id="customer-select"></select>
+
+        <div class="section-divider">
+          <div><strong>Soglie per categoria</strong><span>Quantità acquistata prima della manutenzione ordinaria</span></div>
+        </div>
+        <div id="threshold-fields" class="threshold-fields"></div>
+
+        <label class="field-label" for="ordinary-limit">Manutenzioni ordinarie prima della straordinaria</label>
+        <div class="input-with-suffix">
+          <input class="form-control" id="ordinary-limit" type="number" min="1" max="99" required>
+          <span>interventi</span>
+        </div>
+        <p class="field-hint">Al raggiungimento del numero impostato, l’attrezzatura risulterà da sottoporre a manutenzione straordinaria.</p>
+
+        <div class="dialog-actions">
+          <button type="button" class="button button-secondary" id="cancel-settings">Annulla</button>
+          <button type="submit" class="button button-primary">Salva configurazione</button>
+        </div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

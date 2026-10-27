@@ -6,9 +6,10 @@ const requiredVariables = {
     DB_USER: 'test-user',
     DB_PASSWORD: 'test-password',
     DB_NAME: 'test-database',
-    CATEGORIA_ATTREZZATURE_ID: '1',
-    API_URL: 'https://example.com/api',
-    API_TOKEN: 'test-api-token',
+    DB_NUOVO_HOST: '127.0.0.1',
+    DB_NUOVO_USER: 'service-user',
+    DB_NUOVO_PASSWORD: 'service-password',
+    DB_NUOVO_NAME: 'service',
     SYNC_TRIGGER_TOKEN: 'test-trigger-token',
     CRON_ENABLED: 'false'
 };
@@ -32,7 +33,7 @@ async function withEnvironment(overrides, callback) {
     }
 }
 
-test('accepts a complete ERP and API configuration', async () => {
+test('accepts complete ERP and destination database settings', async () => {
     await withEnvironment(requiredVariables, async () => {
         const { validateConfig } = await import('../src/config/config.js?valid-test');
         assert.doesNotThrow(validateConfig);
@@ -45,6 +46,16 @@ test('reports required settings that are missing', async () => {
         async () => {
             const { validateConfig } = await import('../src/config/config.js?missing-test');
             assert.throws(validateConfig, /DB_HOST/);
+        }
+    );
+});
+
+test('rejects a DDT type code longer than the ERP field', async () => {
+    await withEnvironment(
+        { ...requiredVariables, DDT_NOLEGGIO_TIPO: 'TOOLONG' },
+        async () => {
+            const { validateConfig } = await import('../src/config/config.js?invalid-ddt-type-test');
+            assert.throws(validateConfig, /DDT_NOLEGGIO_TIPO/);
         }
     );
 });

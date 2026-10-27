@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { config } from '../config/config.js';
-import { sincronizzaDdtNoleggio } from '../services/syncService.js';
+import { sincronizzaEPersisti } from '../services/syncAndPersist.js';
 
 function initCronJobs() {
     if (!config.cronEnabled) {
@@ -11,7 +11,8 @@ function initCronJobs() {
     const task = cron.schedule(config.cronSchedule, async () => {
         console.log('[CRON] Avvio sincronizzazione DDT noleggio.');
         try {
-            await sincronizzaDdtNoleggio(config.mesiStorico);
+            const result = await sincronizzaEPersisti(config.mesiStorico);
+            console.log('[CRON] Sincronizzazione completata:', result.statistiche);
         } catch (error) {
             console.error('[CRON] Sincronizzazione fallita:', error.message);
         }

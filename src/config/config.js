@@ -19,8 +19,6 @@ function readInteger(name, defaultValue, minimum, maximum) {
     return parsed;
 }
 
-const categoryId = Number(process.env.CATEGORIA_ATTREZZATURE_ID);
-
 const config = {
     port: readInteger('PORT', 3000, 1, 65535),
     db: {
@@ -31,11 +29,16 @@ const config = {
         database: process.env.DB_NAME,
         connectionLimit: readInteger('DB_POOL_SIZE', 5, 1, 100)
     },
-    apiUrl: process.env.API_URL,
-    apiToken: process.env.API_TOKEN,
-    apiTimeoutMs: readInteger('API_TIMEOUT_MS', 30000, 1000, 300000),
+    dbLocal: {
+        host: process.env.DB_NUOVO_HOST,
+        port: readInteger('DB_NUOVO_PORT', 3306, 1, 65535),
+        user: process.env.DB_NUOVO_USER,
+        password: process.env.DB_NUOVO_PASSWORD,
+        database: process.env.DB_NUOVO_NAME,
+        connectionLimit: readInteger('DB_NUOVO_POOL_SIZE', 10, 1, 100)
+    },
     syncTriggerToken: process.env.SYNC_TRIGGER_TOKEN,
-    categoriaAttrezzatureId: categoryId,
+    ddtNoleggioTipo: process.env.DDT_NOLEGGIO_TIPO?.trim() || null,
     mesiStorico: readInteger('MESI_STORICO', 2, 1, 120),
     cronEnabled: readBoolean('CRON_ENABLED', true),
     cronSchedule: process.env.CRON_SCHEDULE || '0 2 * * *'
@@ -47,8 +50,10 @@ function validateConfig() {
         ['DB_USER', config.db.user],
         ['DB_PASSWORD', config.db.password],
         ['DB_NAME', config.db.database],
-        ['API_URL', config.apiUrl],
-        ['API_TOKEN', config.apiToken],
+        ['DB_NUOVO_HOST', config.dbLocal.host],
+        ['DB_NUOVO_USER', config.dbLocal.user],
+        ['DB_NUOVO_PASSWORD', config.dbLocal.password],
+        ['DB_NUOVO_NAME', config.dbLocal.database],
         ['SYNC_TRIGGER_TOKEN', config.syncTriggerToken]
     ];
     const missing = required
@@ -58,18 +63,8 @@ function validateConfig() {
     if (missing.length > 0) {
         throw new Error(`Configurazione mancante nel file .env: ${missing.join(', ')}.`);
     }
-    if (!Number.isInteger(categoryId) || categoryId < 0) {
-        throw new Error('CATEGORIA_ATTREZZATURE_ID deve essere un intero maggiore o uguale a zero.');
-    }
-
-    let apiUrl;
-    try {
-        apiUrl = new URL(config.apiUrl);
-    } catch {
-        throw new Error('API_URL deve essere un URL assoluto valido.');
-    }
-    if (!['http:', 'https:'].includes(apiUrl.protocol)) {
-        throw new Error('API_URL deve usare il protocollo HTTP o HTTPS.');
+    if (config.ddtNoleggioTipo && config.ddtNoleggioTipo.length > 3) {
+        throw new Error('DDT_NOLEGGIO_TIPO deve contenere al massimo 3 caratteri.');
     }
 
     if (config.cronEnabled && !cron.validate(config.cronSchedule)) {

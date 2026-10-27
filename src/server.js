@@ -16,8 +16,16 @@ function shutdown() {
             console.error('[SERVER] Errore durante la chiusura:', error.message);
             process.exitCode = 1;
         }
-        const { default: db } = await import('./config/db.js');
-        await db.end();
+        try {
+            const [{ default: db }, { default: dbLocal }] = await Promise.all([
+                import('./config/db.js'),
+                import('./config/dbLocal.js')
+            ]);
+            await Promise.all([db.end(), dbLocal.end()]);
+        } catch (closeError) {
+            console.error('[SERVER] Errore durante la chiusura dei database:', closeError.message);
+            process.exitCode = 1;
+        }
     });
 }
 
