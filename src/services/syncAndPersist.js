@@ -1,9 +1,9 @@
-import { eseguiSincronizzazione } from './rentalService.js';
 import { storicizzaPayloadCompleto } from './syncPersistenceService.js';
+import { eseguiSincronizzazione } from './productSyncService.js';
 
 let syncInProgress = false;
 
-async function sincronizzaEPersisti(mesiStorico) {
+async function sincronizzaEPersisti() {
     if (syncInProgress) {
         const error = new Error('È già in corso una sincronizzazione.');
         error.code = 'SYNC_IN_PROGRESS';
@@ -12,7 +12,7 @@ async function sincronizzaEPersisti(mesiStorico) {
 
     syncInProgress = true;
     try {
-        const result = await eseguiSincronizzazione(mesiStorico);
+        const result = await eseguiSincronizzazione();
         await storicizzaPayloadCompleto(result.payload);
         return { statistiche: result.statistiche };
     } finally {

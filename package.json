@@ -1,7 +1,7 @@
 {
-  "name": "sync-noleggio-service",
+  "name": "erp-servizi-pilot-sync",
   "version": "1.0.0",
-  "description": "Servizio Node.js per sincronizzazione noleggi e prodotti acquistati",
+  "description": "Servizio Node.js per sincronizzazione ERP di clienti, prodotti e attrezzature",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

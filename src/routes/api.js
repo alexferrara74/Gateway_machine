@@ -1,28 +1,18 @@
 import { Router } from 'express';
-import { config } from '../config/config.js';
 import { sincronizzaEPersisti } from '../services/syncAndPersist.js';
-import { isSyncAuthorized } from '../utils/syncAuth.js';
 
 const router = Router();
 
-router.post('/riarmo-sync', async (req, res) => {
-    if (!isSyncAuthorized(req.get('authorization'), config.syncTriggerToken)) {
-        return res.status(401).json({
-            status: 'error',
-            message: 'Token di sincronizzazione non valido.'
-        });
-    }
-
-    const mesi = req.body?.mesi ?? config.mesiStorico;
-    if (!Number.isInteger(mesi) || mesi < 1 || mesi > 120) {
+router.post('/sincronizza', async (req, res) => {
+    if (req.body && Object.keys(req.body).length > 0) {
         return res.status(400).json({
             status: 'error',
-            message: 'Il campo mesi deve essere un intero tra 1 e 120.'
+            message: 'Questo endpoint non accetta un body.'
         });
     }
 
     try {
-        const result = await sincronizzaEPersisti(mesi);
+        const result = await sincronizzaEPersisti();
         return res.status(200).json({
             status: 'success',
             message: 'Sincronizzazione completata.',

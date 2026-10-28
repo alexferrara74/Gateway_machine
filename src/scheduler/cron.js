@@ -9,9 +9,9 @@ function initCronJobs() {
     }
 
     const task = cron.schedule(config.cronSchedule, async () => {
-        console.log('[CRON] Avvio sincronizzazione DDT noleggio.');
+        console.log('[CRON] Avvio sincronizzazione clienti, prodotti e attrezzature.');
         try {
-            const result = await sincronizzaEPersisti(config.mesiStorico);
+            const result = await sincronizzaEPersisti();
             console.log('[CRON] Sincronizzazione completata:', result.statistiche);
         } catch (error) {
             console.error('[CRON] Sincronizzazione fallita:', error.message);

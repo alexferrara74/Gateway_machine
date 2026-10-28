@@ -10,7 +10,9 @@ const requiredVariables = {
     DB_NUOVO_USER: 'service-user',
     DB_NUOVO_PASSWORD: 'service-password',
     DB_NUOVO_NAME: 'service',
-    SYNC_TRIGGER_TOKEN: 'test-trigger-token',
+    SYNC_PRODOTTI_CATEGORIE_IDS: '1,2',
+    SYNC_ATTREZZATURE_CLASSI: 'MAC',
+    SYNC_ATTREZZATURE_SOTTOCLASSI: 'MAC:01',
     CRON_ENABLED: 'false'
 };
 
@@ -50,12 +52,14 @@ test('reports required settings that are missing', async () => {
     );
 });
 
-test('rejects a DDT type code longer than the ERP field', async () => {
+test('rejects malformed equipment subclass selectors', async () => {
     await withEnvironment(
-        { ...requiredVariables, DDT_NOLEGGIO_TIPO: 'TOOLONG' },
+        { ...requiredVariables, SYNC_ATTREZZATURE_SOTTOCLASSI: 'ONLY-CLASS' },
         async () => {
-            const { validateConfig } = await import('../src/config/config.js?invalid-ddt-type-test');
-            assert.throws(validateConfig, /DDT_NOLEGGIO_TIPO/);
+            await assert.rejects(
+                import('../src/config/config.js?invalid-equipment-subclass-test'),
+                /classe:sottoclasse/
+            );
         }
     );
 });
