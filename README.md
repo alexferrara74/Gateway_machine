@@ -149,7 +149,7 @@ Invoke-WebRequest -Uri http://localhost:3000/api/export/prodotti `
 | `um` | `articoli.artumven` (minuscolo) |
 | `prezzo` | `listini.lprz1` della riga con `lid` più alto per l'articolo nel listino `EXPORT_B2B_LISTINO_ID`, **senza IVA** |
 | `iva` | `comunejazz.codiva.ivaaliq` tramite `articoli.artcodivaid` |
-| `giacenza` | somma di `lotti.lotpezzigiac`; **0 per gli articoli senza lotti** (vedi limiti) |
+| `giacenza` | registro movimenti dell'anno in corso (`corpodocmag<anno>`): giacenze iniziali + carichi − scarichi, segno dalla causale (`caumag.cmtipo`), ordini esclusi; **0 per gli articoli senza movimenti** (vedi limiti) |
 | `attivo` | 0 se `articoli.artbloccato = 1`, altrimenti 1 |
 
 Il sito scarta l'intero file se una riga non è valida, quindi gli articoli **senza prezzo nel listino, senza IVA
@@ -175,9 +175,14 @@ Il servizio deve restare acceso (o avviato come servizio/attività pianificata d
 
 **Limiti noti:**
 
-- La giacenza non esiste in modo affidabile nell'ERP (`giacenze_storico`, `depgiac` e `inventario` sono vuote): i
-  lotti coprono solo gli articoli a lotto, gli altri risultano 0. Va sostituita con la fonte giusta prima di
-  mostrarla ai clienti.
+- **Giacenza.** L'ERP non ha una tabella di giacenze con dati (`giacenze_storico`, `depgiac`, `inventario` sono vuote): la giacenza
+  si ricostruisce dai movimenti dell'anno (giacenza iniziale + acquisti + resi da cliente − vendite, omaggi, resi a
+  fornitore, scarichi interni e trasferimenti). Ha un valore solo per gli articoli con movimenti nell'anno (circa 200 su
+  1.014): per gli altri esce 0 e il sito mostra "disponibilità su richiesta". **Non è stata riconciliata con una
+  giacenza reale**: i lotti, che per 196 articoli sono l'unico altro dato, non coincidono (64 su 196). Prima di fidarsene,
+  confrontare a mano alcuni articoli con la schermata di giacenza del gestionale.
+- **Articoli esclusi (31 nell'ultima prova).** Sono senza prezzo nel listino scelto: 8 hanno la descrizione `ND*`, uno è
+  la riga di intestazione `Codice Articolo`, gli altri non risultano venduti nel 2026. Il motivo di ciascuno è nel log.
 - Mancano `foto` e `multiplo`: l'ERP non li ha, il sito usa il segnaposto e il multiplo 1.
 - Il listino è scelto per ID e il prezzo si considera senza IVA perché `artflagiva = 0` su tutti gli articoli:
   confermare con chi usa il gestionale.

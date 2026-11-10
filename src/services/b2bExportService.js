@@ -81,6 +81,37 @@ function logEscluse(escluse) {
     console.warn(`[EXPORT] ${escluse.length} articoli esclusi dal file. Primi: ${elenco.join('; ')}`);
 }
 
+// Tipi documento che non muovono il magazzino: ordini cliente (6) e ordini a fornitore (7).
+const DOC_ORDINI = [6, 7];
+
+/**
+ * Giacenza dal registro movimenti dell'anno in corso: giacenze iniziali + carichi (acquisti, resi da cliente)
+ * - scarichi (vendite, omaggi, resi a fornitore, scarichi interni, trasferimenti). Segno dalla causale (caumag.cmtipo:
+ * 0 e 1 = carico, 2 = scarico, 3 = nessun effetto). Il registro riparte ogni anno con le giacenze iniziali.
+ * Solo gli articoli con movimenti nell'anno hanno un valore: per gli altri la giacenza non è gestita nell'ERP.
+ */
+async function caricaGiacenze(categoryIds) {
+    const anno = new Date().getFullYear();
+    try {
+        const [rows] = await db.query(`
+            SELECT r.corpomagartid AS articolo_id,
+                   SUM(CASE c.cmtipo WHEN 0 THEN r.corpomagqta WHEN 1 THEN r.corpomagqta WHEN 2 THEN -r.corpomagqta ELSE 0 END) AS giacenza
+            FROM corpodocmag${anno}${anno} r
+            JOIN movimentidoc${anno}${anno} m ON m.movdocid = r.corpomagmovdocid
+            JOIN documenti d ON d.docid = m.movdocdocumid
+            JOIN caumag c ON c.cmid = r.corpomagcaumag
+            WHERE d.doctipo NOT IN (?)
+              AND r.corpomagartid IN (SELECT artid FROM articoli WHERE artclscid IN (?))
+            GROUP BY r.corpomagartid
+        `, [DOC_ORDINI, categoryIds]);
+        return new Map(rows.map(row => [Number(row.articolo_id), Number(row.giacenza)]));
+    } catch (error) {
+        if (error.code !== 'ER_NO_SUCH_TABLE') throw error;
+        console.warn(`[EXPORT] Tabelle movimenti ${anno} non presenti: giacenza 0 per tutti gli articoli.`);
+        return new Map();
+    }
+}
+
 async function esportaProdottiB2B() {
     const { categoryIds, priceListId } = config.b2bExport;
     if (categoryIds.length === 0 || priceListId === 0) {
@@ -90,16 +121,15 @@ async function esportaProdottiB2B() {
     }
 
     // Prezzo: ultima riga inserita (lid più alto) dell'articolo nel listino scelto, colonna lprz1.
-    // Giacenza: somma dei pezzi a lotto (lotti); gli articoli senza lotti risultano 0.
-    const [rows] = await db.query(`
+    const [articoli] = await db.query(`
         SELECT
+            art.artid AS articolo_id,
             art.artcod AS codice,
             art.artdescr AS descrizione,
             csc.clscdescr AS categoria,
             art.artumven AS um,
             p.prezzo AS prezzo,
             iva.ivaaliq AS iva,
-            COALESCE(g.giacenza, 0) AS giacenza,
             art.artbloccato AS bloccato
         FROM articoli art
         LEFT JOIN classisottoclassi csc ON csc.clscid = art.artclscid
@@ -111,12 +141,12 @@ async function esportaProdottiB2B() {
                 SELECT lartid, MAX(lid) AS lid FROM listini WHERE llistid = ? GROUP BY lartid
             ) ultimo ON ultimo.lid = l.lid
         ) p ON p.lartid = art.artid
-        LEFT JOIN (
-            SELECT lotartid, SUM(lotpezzigiac) AS giacenza FROM lotti GROUP BY lotartid
-        ) g ON g.lotartid = art.artid
         WHERE art.artclscid IN (?)
         ORDER BY art.artcod
     `, [priceListId, categoryIds]);
+
+    const giacenze = await caricaGiacenze(categoryIds);
+    const rows = articoli.map(articolo => ({ ...articolo, giacenza: giacenze.get(Number(articolo.articolo_id)) ?? 0 }));
 
     const result = buildProdottiCsv(rows);
     if (result.esportate === 0) {
