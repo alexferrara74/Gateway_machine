@@ -63,6 +63,9 @@ function readSubclassPairs(name) {
 
 const config = {
     port: readInteger('PORT', 3000, 1, 65535),
+    host: process.env.HOST || undefined,
+    // Facoltativo: se valorizzato, /api richiede 'Authorization: Bearer <token>'.
+    syncApiToken: (process.env.SYNC_API_TOKEN || '').trim(),
     db: {
         host: process.env.DB_HOST,
         port: readInteger('DB_PORT', 3306, 1, 65535),

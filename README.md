@@ -32,6 +32,8 @@ attivo.
 | Variabile | Descrizione |
 | --- | --- |
 | `PORT` | Porta HTTP; predefinita `3000`. |
+| `HOST` | Interfaccia di ascolto; vuoto = tutte, `127.0.0.1` = solo questo computer. |
+| `SYNC_API_TOKEN` | Facoltativo ma consigliato. Se valorizzato, `POST /api/sincronizza` richiede `Authorization: Bearer <token>` (`/health` resta pubblico). Impostare lo stesso valore nel backend (`SYNC_API_TOKEN`), che lo inoltra. Senza token il servizio avvisa all'avvio. |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Connessione ERP; il database principale è `az1`. |
 | `DB_NUOVO_HOST`, `DB_NUOVO_PORT`, `DB_NUOVO_USER`, `DB_NUOVO_PASSWORD`, `DB_NUOVO_NAME` | Connessione alla destinazione, normalmente `service`. |
 | `SYNC_PRODOTTI_CATEGORIE_IDS` | ID `artclscid` delle categorie prodotto, separati da virgola. `SYNC_ANAG_IDS` resta accettato come alias. |
@@ -70,7 +72,25 @@ dal versionamento.
 La sincronizzazione aggiorna i record esistenti in modo idempotente e persiste
 i dati in una transazione.
 
+## Test
+
+```powershell
+npm test
+```
+
+Sette test girano sempre (configurazione, DTO, API/token). Altri cinque verificano la **persistenza su un database MySQL reale** (idempotenza, rollback, righe manuali mai cancellate) e sono disattivati finché non si indica un database dedicato il cui nome **termina in `_test`** (il test cancella le sue tabelle e le ricrea dalla V1 di `../servizi_pilot_BE`):
+
+```powershell
+$env:IT_DB_HOST='127.0.0.1'; $env:IT_DB_PORT='3306'; $env:IT_DB_USER='root'; $env:IT_DB_PASSWORD='...'; $env:IT_DB_NAME='service_test'
+npm test
+```
+
+Con un nome diverso da `*_test` i test restano saltati: non possono toccare il database vero.
+
 ## Migrazione database
+
+> **Lo schema ora è gestito da Flyway nel backend** (`servizi_pilot_BE/src/main/resources/db/migration`). Gli script in `migrations/` sono storici (già consolidati nella V1) e non vanno eseguiti su un database nuovo. Le nuove modifiche allo schema si aggiungono come migrazioni Flyway nel backend.
+
 
 Prima dell'avvio, fare un backup e applicare una sola volta, in ordine,
 [`migrations/001_catalogo_prodotti.sql`](./migrations/001_catalogo_prodotti.sql)
@@ -80,12 +100,16 @@ attrezzature ai prodotti ERP, aggiungono a `storia_prodotti` le chiavi per
 evitare doppioni e creano il riferimento locale di classi/sottoclassi. Non
 vengono eseguite automaticamente.
 
+## Pulizia dei doppioni storici
+
+Dopo il primo sync con chiavi ERP, le righe di `storia_prodotti` scritte dal vecchio sync (senza chiave ERP) risultano duplicate. `scripts/deduplica_storia_prodotti.sql` mostra l'anteprima ed elimina solo le righe gemelle esatte; per default termina con `ROLLBACK` (sostituirlo con `COMMIT` dopo aver verificato i numeri; fare prima un backup). Dettagli in `../docs/ANALISI_DATI_ERP.md`.
+
 ## Avvio manuale da Postman
 
-Inviare una richiesta `POST` a `http://localhost:3000/api/sincronizza` senza
-header `Authorization` e senza body. L'endpoint non richiede token; esporlo
-solo su localhost o su una rete interna fidata, perché chi può raggiungerlo può
-avviare una sincronizzazione.
+Inviare una richiesta `POST` a `http://localhost:3000/api/sincronizza` senza body.
+Se `SYNC_API_TOKEN` è impostato aggiungere l'header `Authorization: Bearer <token>`;
+altrimenti l'endpoint è aperto: esporlo solo su localhost o su una rete interna
+fidata, perché chi può raggiungerlo può avviare una sincronizzazione.
 
 PowerShell:
 
@@ -93,6 +117,7 @@ PowerShell:
 Invoke-RestMethod `
   -Method Post `
   -Uri http://localhost:3000/api/sincronizza `
+  -Headers @{ Authorization = "Bearer $env:SYNC_API_TOKEN" } `
   -ContentType "application/json"
 ```
 

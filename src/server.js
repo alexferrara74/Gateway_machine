@@ -5,8 +5,13 @@ import app from './app.js';
 validateConfig();
 const cronTask = initCronJobs();
 
-const server = app.listen(config.port, () => {
-    console.log(`Server attivo sulla porta ${config.port}.`);
+if (!config.syncApiToken) {
+    console.warn('[SICUREZZA] SYNC_API_TOKEN non impostato: chi raggiunge il servizio può avviare la sincronizzazione.');
+}
+
+const listenArgs = [config.port, ...(config.host ? [config.host] : [])];
+const server = app.listen(...listenArgs, () => {
+    console.log(`Server attivo su ${config.host ?? 'tutte le interfacce'}:${config.port}.`);
 });
 
 function shutdown() {
