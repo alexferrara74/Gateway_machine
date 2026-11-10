@@ -86,6 +86,11 @@ const config = {
     equipmentClassCodes: readCodeList('SYNC_ATTREZZATURE_CLASSI'),
     equipmentSubclasses: readSubclassPairs('SYNC_ATTREZZATURE_SOTTOCLASSI'),
     accessorySubclasses: readSubclassPairs('SYNC_ACCESSORI_SOTTOCLASSI'),
+    // Export B2B (file prodotti.csv per il sito Sana Breakfast): categorie articolo e listino di vendita.
+    b2bExport: {
+        categoryIds: readIntegerList('EXPORT_B2B_CATEGORIE_IDS'),
+        priceListId: readInteger('EXPORT_B2B_LISTINO_ID', 0, 0, 2147483647)
+    },
     invoiceStartYear: readInteger('SYNC_FATTURE_DA_ANNO', 2011, 2000, 2100),
     cronEnabled: readBoolean('CRON_ENABLED', true),
     cronSchedule: process.env.CRON_SCHEDULE || '0 2 * * *'

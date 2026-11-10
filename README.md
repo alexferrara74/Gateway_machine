@@ -41,6 +41,8 @@ attivo.
 | `SYNC_ATTREZZATURE_SOTTOCLASSI` | Coppie esatte `clcod:sccod`, separate da virgola. |
 | `SYNC_ACCESSORI_SOTTOCLASSI` | Coppie `clcod:sccod` della selezione attrezzature che sono accessori: non entrano in `local_attrezzature` e hanno `is_accessorio=1`. |
 | `SYNC_FATTURE_DA_ANNO` | Primo anno delle fatture da acquisire; predefinito `2011`. |
+| `EXPORT_B2B_CATEGORIE_IDS` | ID `artclscid` delle categorie da esportare per il sito B2B, separati da virgola. Indipendente da `SYNC_PRODOTTI_CATEGORIE_IDS`. Senza, l'export risponde 503. |
+| `EXPORT_B2B_LISTINO_ID` | `listini.llistid` del listino di vendita da cui leggere il prezzo (senza IVA). Senza, l'export risponde 503. |
 | `CRON_ENABLED`, `CRON_SCHEDULE` | Scheduler automatico; predefinito ogni giorno alle 02:00. |
 
 Non inserire `.env` nel controllo versione. I dump SQL in `dupm/` sono esclusi
@@ -123,6 +125,43 @@ Invoke-RestMethod `
 
 La risposta contiene il numero di clienti, prodotti, attrezzature e righe
 fattura elaborate, non i dati anagrafici.
+
+## Export prodotti per il sito B2B
+
+`GET /api/export/prodotti` restituisce il file `prodotti.csv` (UTF-8, separatore `;`) con gli articoli delle
+categorie `EXPORT_B2B_CATEGORIE_IDS`, nel tracciato dell'import del sito Sana Breakfast
+(`sanabreakfasthotel/docs/tracciato-prodotti.md`). Legge solo dall'ERP: **il file è la risposta, non viene scritto
+su nessun database né su disco.** Richiede il token come gli altri endpoint (`SYNC_API_TOKEN`).
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:3000/api/export/prodotti `
+  -Headers @{ Authorization = "Bearer $env:SYNC_API_TOKEN" } -OutFile prodotti.csv
+```
+
+| Colonna | Origine ERP |
+| --- | --- |
+| `codice` | `articoli.artcod` (maiuscolo) |
+| `descrizione` | `articoli.artdescr` |
+| `categoria` | `classisottoclassi.clscdescr` |
+| `um` | `articoli.artumven` (minuscolo) |
+| `prezzo` | `listini.lprz1` della riga con `lid` più alto per l'articolo nel listino `EXPORT_B2B_LISTINO_ID`, **senza IVA** |
+| `iva` | `comunejazz.codiva.ivaaliq` tramite `articoli.artcodivaid` |
+| `giacenza` | somma di `lotti.lotpezzigiac`; **0 per gli articoli senza lotti** (vedi limiti) |
+| `attivo` | 0 se `articoli.artbloccato = 1`, altrimenti 1 |
+
+Il sito scarta l'intero file se una riga non è valida, quindi gli articoli **senza prezzo nel listino, senza IVA
+intera, con codice non valido o doppio** restano fuori dal file: il loro numero è nell'header `X-Righe-Escluse`
+(esportate: `X-Righe-Esportate`) e i primi 20 con il motivo sono nel log del servizio. Se non resta nessun articolo
+la risposta è 422; se manca la configurazione, 503.
+
+**Limiti noti:**
+
+- La giacenza non esiste in modo affidabile nell'ERP (`giacenze_storico`, `depgiac` e `inventario` sono vuote): i
+  lotti coprono solo gli articoli a lotto, gli altri risultano 0. Va sostituita con la fonte giusta prima di
+  mostrarla ai clienti.
+- Mancano `foto` e `multiplo`: l'ERP non li ha, il sito usa il segnaposto e il multiplo 1.
+- Il listino è scelto per ID e il prezzo si considera senza IVA perché `artflagiva = 0` su tutti gli articoli:
+  confermare con chi usa il gestionale.
 
 ## Anteprima interfaccia
 

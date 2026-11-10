@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sincronizzaEPersisti } from '../services/syncAndPersist.js';
+import { esportaProdottiB2B } from '../services/b2bExportService.js';
 
 const router = Router();
 
@@ -30,6 +31,34 @@ router.post('/sincronizza', async (req, res) => {
             status: 'error',
             message: 'Errore durante la sincronizzazione.'
         });
+    }
+});
+
+// Solo lettura dall'ERP: il file viene restituito nella risposta, non viene salvato su nessun database.
+router.get('/export/prodotti', async (req, res) => {
+    try {
+        const { csv, esportate, escluse } = await esportaProdottiB2B();
+        if (escluse.length > 0) {
+            const elenco = escluse.slice(0, 20).map(item => `${item.codice || '(vuoto)'}: ${item.motivo}`);
+            console.warn(`[EXPORT] ${escluse.length} articoli esclusi dal file. Primi: ${elenco.join('; ')}`);
+        }
+        res.set({
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="prodotti.csv"',
+            'Cache-Control': 'no-store',
+            'X-Righe-Esportate': String(esportate),
+            'X-Righe-Escluse': String(escluse.length)
+        });
+        return res.status(200).send(csv);
+    } catch (error) {
+        console.error('[API] Errore durante l\'export prodotti:', error.message);
+        if (error.code === 'EXPORT_CONFIG') {
+            return res.status(503).json({ status: 'error', message: error.message });
+        }
+        if (error.code === 'EXPORT_EMPTY') {
+            return res.status(422).json({ status: 'error', message: error.message });
+        }
+        return res.status(500).json({ status: 'error', message: 'Errore durante l\'export prodotti.' });
     }
 });
 
