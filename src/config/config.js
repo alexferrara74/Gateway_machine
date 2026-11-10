@@ -89,12 +89,52 @@ const config = {
     // Export B2B (file prodotti.csv per il sito Sana Breakfast): categorie articolo e listino di vendita.
     b2bExport: {
         categoryIds: readIntegerList('EXPORT_B2B_CATEGORIE_IDS'),
-        priceListId: readInteger('EXPORT_B2B_LISTINO_ID', 0, 0, 2147483647)
+        priceListId: readInteger('EXPORT_B2B_LISTINO_ID', 0, 0, 2147483647),
+        // Generazione periodica del file: scritto in una cartella locale e/o caricato via SFTP sul sito.
+        cronEnabled: readBoolean('EXPORT_B2B_CRON_ENABLED', false),
+        cronSchedule: process.env.EXPORT_B2B_CRON_SCHEDULE || '0 */3 * * *',
+        outputDir: (process.env.EXPORT_B2B_OUTPUT_DIR || '').trim(),
+        sftp: {
+            host: (process.env.EXPORT_B2B_SFTP_HOST || '').trim(),
+            port: readInteger('EXPORT_B2B_SFTP_PORT', 22, 1, 65535),
+            username: (process.env.EXPORT_B2B_SFTP_USER || '').trim(),
+            password: process.env.EXPORT_B2B_SFTP_PASSWORD || '',
+            privateKeyPath: (process.env.EXPORT_B2B_SFTP_PRIVATE_KEY_PATH || '').trim(),
+            remoteDir: (process.env.EXPORT_B2B_SFTP_REMOTE_DIR || '').trim(),
+            hostFingerprint: (process.env.EXPORT_B2B_SFTP_HOST_FINGERPRINT || '').trim()
+        }
     },
     invoiceStartYear: readInteger('SYNC_FATTURE_DA_ANNO', 2011, 2000, 2100),
     cronEnabled: readBoolean('CRON_ENABLED', true),
     cronSchedule: process.env.CRON_SCHEDULE || '0 2 * * *'
 };
+
+/** Con il cron dell'export attivo la configurazione deve essere completa fin dall'avvio, non alla prima esecuzione. */
+function validateB2bExport() {
+    const { cronEnabled, cronSchedule, categoryIds, priceListId, outputDir, sftp } = config.b2bExport;
+    if (!cronEnabled) return;
+
+    if (!cron.validate(cronSchedule)) {
+        throw new Error("EXPORT_B2B_CRON_SCHEDULE non è un'espressione cron valida.");
+    }
+    if (categoryIds.length === 0 || priceListId === 0) {
+        throw new Error('Con EXPORT_B2B_CRON_ENABLED configurare EXPORT_B2B_CATEGORIE_IDS ed EXPORT_B2B_LISTINO_ID.');
+    }
+    if (!outputDir && !sftp.host) {
+        throw new Error('Con EXPORT_B2B_CRON_ENABLED indicare dove consegnare il file: EXPORT_B2B_OUTPUT_DIR e/o EXPORT_B2B_SFTP_HOST.');
+    }
+    if (sftp.host) {
+        const missing = [
+            ['EXPORT_B2B_SFTP_USER', sftp.username],
+            ['EXPORT_B2B_SFTP_REMOTE_DIR', sftp.remoteDir],
+            ['EXPORT_B2B_SFTP_PASSWORD o EXPORT_B2B_SFTP_PRIVATE_KEY_PATH', sftp.password || sftp.privateKeyPath],
+            ['EXPORT_B2B_SFTP_HOST_FINGERPRINT', sftp.hostFingerprint]
+        ].filter(([, value]) => !value).map(([name]) => name);
+        if (missing.length > 0) {
+            throw new Error(`Configurazione SFTP incompleta: ${missing.join(', ')}.`);
+        }
+    }
+}
 
 function validateConfig() {
     const required = [
@@ -117,6 +157,7 @@ function validateConfig() {
     if (config.cronEnabled && !cron.validate(config.cronSchedule)) {
         throw new Error("CRON_SCHEDULE non è un'espressione cron valida.");
     }
+    validateB2bExport();
 }
 
 export { config, validateConfig };

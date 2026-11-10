@@ -43,6 +43,9 @@ attivo.
 | `SYNC_FATTURE_DA_ANNO` | Primo anno delle fatture da acquisire; predefinito `2011`. |
 | `EXPORT_B2B_CATEGORIE_IDS` | ID `artclscid` delle categorie da esportare per il sito B2B, separati da virgola. Indipendente da `SYNC_PRODOTTI_CATEGORIE_IDS`. Senza, l'export risponde 503. |
 | `EXPORT_B2B_LISTINO_ID` | `listini.llistid` del listino di vendita da cui leggere il prezzo (senza IVA). Senza, l'export risponde 503. |
+| `EXPORT_B2B_CRON_ENABLED`, `EXPORT_B2B_CRON_SCHEDULE` | Generazione periodica di `prodotti.csv`; predefinito spento, ogni 3 ore (`0 */3 * * *`). Con il cron attivo la configurazione viene controllata all'avvio. |
+| `EXPORT_B2B_OUTPUT_DIR` | Cartella locale dove salvare il file (facoltativa se usi l'SFTP). |
+| `EXPORT_B2B_SFTP_HOST`, `_PORT`, `_USER`, `_PASSWORD` o `_PRIVATE_KEY_PATH`, `_REMOTE_DIR`, `_HOST_FINGERPRINT` | Consegna del file sul sito via SFTP. `_REMOTE_DIR` è relativa alla home (`sana-private/data/import`). L'impronta del server è obbligatoria. |
 | `CRON_ENABLED`, `CRON_SCHEDULE` | Scheduler automatico; predefinito ogni giorno alle 02:00. |
 
 Non inserire `.env` nel controllo versione. I dump SQL in `dupm/` sono esclusi
@@ -153,6 +156,22 @@ Il sito scarta l'intero file se una riga non è valida, quindi gli articoli **se
 intera, con codice non valido o doppio** restano fuori dal file: il loro numero è nell'header `X-Righe-Escluse`
 (esportate: `X-Righe-Esportate`) e i primi 20 con il motivo sono nel log del servizio. Se non resta nessun articolo
 la risposta è 422; se manca la configurazione, 503.
+
+### Generazione automatica ogni 3 ore
+
+Con `EXPORT_B2B_CRON_ENABLED=true` il servizio genera il file ogni 3 ore (`EXPORT_B2B_CRON_SCHEDULE`) e lo
+consegna alle destinazioni configurate:
+
+- **Cartella locale** (`EXPORT_B2B_OUTPUT_DIR`): scrive `prodotti.csv.part` e lo rinomina in `prodotti.csv`.
+- **Sito via SFTP** (`EXPORT_B2B_SFTP_*`): carica `prodotti.csv.part` nella cartella `data/import` del sito e lo
+  rinomina, così lo script di import del sito non legge mai un file a metà. Il server è riconosciuto dall'impronta
+  (`EXPORT_B2B_SFTP_HOST_FINGERPRINT`), senza la quale il servizio non parte.
+
+Se l'ERP non risponde o il caricamento fallisce, il job scrive l'errore nel log e riprova al giro successivo: sul
+sito resta l'ultimo catalogo importato. Per provare la consegna senza aspettare il cron:
+`POST /api/export/prodotti/consegna` (stesso token degli altri endpoint, nessun body).
+
+Il servizio deve restare acceso (o avviato come servizio/attività pianificata di Windows) perché il cron giri.
 
 **Limiti noti:**
 

@@ -74,6 +74,13 @@ function buildProdottiCsv(rows) {
     };
 }
 
+/** Scrive nel log gli articoli esclusi dal file (i primi 20, con il motivo). */
+function logEscluse(escluse) {
+    if (escluse.length === 0) return;
+    const elenco = escluse.slice(0, 20).map(item => `${item.codice || '(vuoto)'}: ${item.motivo}`);
+    console.warn(`[EXPORT] ${escluse.length} articoli esclusi dal file. Primi: ${elenco.join('; ')}`);
+}
+
 async function esportaProdottiB2B() {
     const { categoryIds, priceListId } = config.b2bExport;
     if (categoryIds.length === 0 || priceListId === 0) {
@@ -120,4 +127,4 @@ async function esportaProdottiB2B() {
     return result;
 }
 
-export { buildProdottiCsv, esportaProdottiB2B };
+export { buildProdottiCsv, esportaProdottiB2B, logEscluse };
